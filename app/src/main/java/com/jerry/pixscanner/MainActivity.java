@@ -1,40 +1,50 @@
 package com.jerry.pixscanner;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
-import android.support.v7.app.AppCompatActivity;
+import android.os.IBinder;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.widget.Toast;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_MEDIA_PROJECTION = 1;
     private MediaProjectionManager mMediaProjectionManager;
-    private MediaProjection mMediaProjection;
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(final ComponentName name, final IBinder service) {
+            LogUtils.i("Starting screen capture");
+            mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+            if (mMediaProjectionManager != null) {
+                startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
+            }
+        }
 
+        @Override
+        public void onServiceDisconnected(final ComponentName name) {
+
+        }
+    };
+
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        if (mMediaProjectionManager != null) {
-            startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
-        }
         findViewById(R.id.img).setOnTouchListener((v, event) -> {
             int action = event.getAction() & MotionEvent.ACTION_MASK;
             if (action == MotionEvent.ACTION_DOWN) {
@@ -48,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
+        bindService(new Intent(this, MediaService.class), mServiceConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
@@ -60,21 +71,22 @@ public class MainActivity extends AppCompatActivity {
             }
 
             LogUtils.i("Starting screen capture");
-            mMediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
-            setUpVirtualDisplay();
+            MediaProjection mediaProjection = mMediaProjectionManager.getMediaProjection(resultCode, data);
+            DisplayMetrics dm = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+
+            final ImageReader imageReader = ImageReader.newInstance(dm.widthPixels, dm.heightPixels, PixelFormat.RGBA_8888, 1);
+            mediaProjection.createVirtualDisplay("ScreenCapture",
+                dm.widthPixels, dm.heightPixels, dm.densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader.getSurface(), null, null);
+            GBData.reader = imageReader;
         }
     }
 
-    private void setUpVirtualDisplay() {
-        DisplayMetrics dm = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getRealMetrics(dm);
-
-        final ImageReader imageReader = ImageReader.newInstance(dm.widthPixels, dm.heightPixels, PixelFormat.RGBA_8888, 1);
-        mMediaProjection.createVirtualDisplay("ScreenCapture",
-            dm.widthPixels, dm.heightPixels, dm.densityDpi,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader.getSurface(), null, null);
-        GBData.reader = imageReader;
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unbindService(mServiceConnection);
     }
-
 }

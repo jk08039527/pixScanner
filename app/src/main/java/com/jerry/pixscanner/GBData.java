@@ -9,8 +9,7 @@ import android.media.ImageReader;
 /**
  * @author Jerry
  * @createDate 2019/4/14
- * @copyright www.aniu.tv
- * @description
+ * @description GBData
  */
 public class GBData {
 
