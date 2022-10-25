@@ -31,7 +31,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        rootCmd();
         mMediaProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if (mMediaProjectionManager != null) {
             startActivityForResult(mMediaProjectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
@@ -49,43 +48,6 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
-
-        // 请求悬浮窗
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(getApplicationContext())) {
-            //启动Activity让用户授权
-            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-            intent.setData(Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
-        }
-    }
-
-    /**
-     * 获取root权限，研究按键精灵中模拟按键功能的童鞋可以添加
-     */
-    public void rootCmd() {
-        Process process = null;
-        DataOutputStream os = null;
-        try {
-            process = Runtime.getRuntime().exec("su");
-            os = new DataOutputStream(process.getOutputStream());
-            os.writeBytes("chmod 777 /dev/block/mmcblk0\n");
-            os.writeBytes("exit\n");
-            os.flush();
-            process.waitFor();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (os != null) {
-                try {
-                    os.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (process != null) {
-                process.destroy();
-            }
-        }
     }
 
     @Override

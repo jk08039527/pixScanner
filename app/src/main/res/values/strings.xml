@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">pixScanner</string>
-    <string name="accessibility_service_description">accessibility</string>
 </resources>
